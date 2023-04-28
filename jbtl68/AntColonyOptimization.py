@@ -17,6 +17,7 @@ import time
 import random
 import copy
 import math
+from itertools import chain
 ############ START OF SECTOR 1 (IGNORE THIS COMMENT)
 ############
 ############ NOW PLEASE SCROLL DOWN UNTIL THE NEXT BLOCK OF CAPITALIZED COMMENTS.
@@ -354,7 +355,6 @@ def basic_greedy_search(dist_matrix, num_cities):
         fringe_distances = dist_matrix[current_city]
 
         next_city = None
-        shortest_dist = 0
 
         for city_indx, dist in enumerate(fringe_distances):
             # only consider a city if we have not already visited it
@@ -433,11 +433,12 @@ while t < max_it: # for each iteration
 
 
         # while we have not visited all cities
+        neighbours = [i for i in range(num_cities)]
+
         while len(forbidden) != num_cities:
 
 
-
-            neighbours = [i for i in range(num_cities) if i not in forbidden]
+            neighbours = list(set(neighbours) - set(forbidden))
             probabilities = []
 
             # for each neighbour of the current city
@@ -453,7 +454,9 @@ while t < max_it: # for each iteration
             index = random.choices(range(len(probabilities)), weights=probabilities, k=1)[0]
             forbidden.append(neighbours[index])
 
-            tours.append(forbidden)
+        
+        
+        tours.append(forbidden)
 
 
 
