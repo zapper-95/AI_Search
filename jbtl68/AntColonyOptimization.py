@@ -17,7 +17,6 @@ import time
 import random
 import copy
 import math
-from itertools import chain
 ############ START OF SECTOR 1 (IGNORE THIS COMMENT)
 ############
 ############ NOW PLEASE SCROLL DOWN UNTIL THE NEXT BLOCK OF CAPITALIZED COMMENTS.
@@ -329,17 +328,17 @@ added_note = ""
 # start timer
 start_time = time.time()
 # stop execution of the code after 57 seconds
-end_time = 3
+end_time = 5
 
 tour_length = -1
 random.seed(1234)
 
 '''ACO PARAMETERS'''
 max_it = 100
-N = 2
-ro = 0.8
+N = num_cities
+ro = 0.5
 alpha = 1
-beta = 3
+beta = 10
 
 
 ''' DECLARING FUNCTIONS '''
@@ -372,28 +371,75 @@ def basic_greedy_search(dist_matrix, num_cities):
     c_tour_length += dist_matrix[c_tour[-1]][c_tour[0]]
     return c_tour_length
 
-def non_normalized_prob(dist_matrix,pheremone_matrix, i, j):
-    epsilon = 0.0001
-    heuristic_desire = 1/(dist_matrix[i][j]+epsilon)
-    p = math.pow(pheremone_matrix[i][j],alpha)*math.pow(heuristic_desire,beta)
-    return p
 
-def calculate_tour_length(c_tour):
-    c_tour_length = 0
-    for i in range(len(c_tour)-1):
-        c_tour_length += dist_matrix[c_tour[i]][c_tour[i+1]]
-    c_tour_length += dist_matrix[c_tour[-1]][c_tour[0]]
-    return c_tour_length
 
-def adjust_pheremone_levels(pheremone_matrix, tours):
-    # precompute tour lengths
-    tour_lengths = [calculate_tour_length(tour) for tour in tours]
 
-    # iterate through tours and edges only once
-    for tour_idx, tour in enumerate(tours):
-        for k in range(len(tour)):
-            i = tour[k]
-            j = tour[(k + 1) % len(tour)]
+Tau_0 = N/basic_greedy_search(dist_matrix, num_cities)
+
+# place the ants at random cities
+ants_pos = [random.randint(0, num_cities-1) for i in range(N)]
+
+# initialise the pheremone matrix
+pheremone_matrix = [[Tau_0 for i in range(num_cities)] for j in range(num_cities)]
+
+'''START OF ACO ALGORITHM'''
+time_out = False
+for t in range(max_it):
+    tours = []
+    tour_lengths = []
+    for k in range(N):
+        
+        # check timer
+        if time.time() - start_time > end_time:
+            time_out = True
+            break
+
+
+        current_city = ants_pos[k]
+        forbidden_cities = [current_city]
+        neighbours = list(range(num_cities))
+
+        length = 0
+        while len(forbidden_cities) != num_cities:
+            neighbours = list(set(neighbours) - set(forbidden_cities))
+
+            #produce a heuristic list that is the inverse of the distance to each neighbour
+            epsilon = 0.000001
+            heuristic = [1/(dist_matrix[current_city][i]+epsilon) for i in neighbours]
+            
+            probabilities = [pheremone_matrix[current_city][city]**alpha * heuristic[i]**beta for i,city in enumerate(neighbours)]
+
+            # pick a city stochastically
+            current_city = random.choices(neighbours, probabilities)[0]
+
+            # increment the length of the tour
+            length += dist_matrix[forbidden_cities[-1]][current_city]
+
+            # add the city to the forbidden list
+            forbidden_cities.append(current_city)
+        
+        last_length = dist_matrix[forbidden_cities[-1]][forbidden_cities[0]]
+        tour_lengths.append(length+last_length)
+        tours.append(forbidden_cities)
+
+    
+    
+    # get the index of the smallest tour
+    best_tour_indx = tour_lengths.index(min(tour_lengths))
+
+    if (tour_length == -1 or tour_lengths[best_tour_indx] < tour_length):
+        tour_length = tour_lengths[best_tour_indx]
+        tour = tours[best_tour_indx]
+
+
+    if(time_out):
+        break
+
+    # update pheremone matrix
+    for tour_idx, temp_tour in enumerate(tours):
+        for k in range(num_cities):
+            i = temp_tour[k]
+            j = temp_tour[(k + 1) % len(temp_tour)]
 
             # Evaporate the pheromone levels
             pheremone_matrix[i][j] *= (1 - ro)
@@ -401,84 +447,11 @@ def adjust_pheremone_levels(pheremone_matrix, tours):
             # Add the pheromone levels from the tours
             pheremone_matrix[i][j] += 1 / tour_lengths[tour_idx]
 
-
-
-Tau_0 = N/basic_greedy_search(dist_matrix, num_cities)
-
-'''START OF ACO ALGORITHM'''
-
-
-'''Initialise pheremone matrix'''
-# perform a deep copy of the dist_matrix
-pheremone_matrix = copy.deepcopy(dist_matrix)
-
-# initialise all pheremone values to Tau_0
-# 2 ways of indexing pheremone levels
-for i in range(num_cities):
-    for j in range(num_cities):
-        pheremone_matrix[i][j] = Tau_0
-
-
-'''Initialise positions of ants'''
-# for each of the n ants generate a number between 0 and the n-1 cities
-# do this for each ant and store the results in a list
-positions = []
-for i in range(N):
-    positions.append(random.randint(0, num_cities-1))
-
-
-'''Start of the main loop'''
-time_up = False
-t = 0
-while t < max_it: # for each iteration
-    tours = []
-    for k in range(N): # for each ant
-
-      
-        elapsed_time = time.time() - start_time
-        if elapsed_time > end_time:
-            time_up = True
-            break
-
-        # initialise the set of forbidden cities
-        forbidden = [positions[k]]
-
-        # initialise the set of neighbours
-        neighbours = list(range(num_cities))
-
-        while len(forbidden) != num_cities:
-            neighbours = list(set(neighbours) - set(forbidden))
-
-            # Calculate and normalize probabilities for each neighbour
-            probabilities = [non_normalized_prob(dist_matrix, pheremone_matrix, forbidden[-1], neighbour) for neighbour in neighbours]
-            #total_prob = sum(probabilities)
-            #probabilities = [i / total_prob for i in probabilities]
-
-            # Choose a city randomly based on the probabilities
-            next_city = random.choices(neighbours, weights=probabilities, k=1)[0]
-            forbidden.append(next_city)
-
-        tours.append(forbidden)
-
-
-
-    # evaluate the best tour    
-    for c_tour in tours:
-        c_tour_length = calculate_tour_length(c_tour)
-        
-        if c_tour_length < tour_length or tour_length == -1:
-            tour_length = c_tour_length
-            tour = c_tour
-
-    if time_up:
-        break
+    t += 1
     
-    # deposit and evappourate pheremone
-    adjust_pheremone_levels(pheremone_matrix, tours)
+            
 
 
-    # increment time 
-    t += 1     
 
 
 
