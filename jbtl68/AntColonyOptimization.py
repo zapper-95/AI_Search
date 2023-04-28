@@ -336,11 +336,11 @@ random.seed(1234)
 
 '''ACO PARAMETERS'''
 max_it = 100
-N = num_cities
-ro = 0.5
+N = 2
+ro = 0.8
 alpha = 1
 beta = 3
-tour_length = -1
+
 
 ''' DECLARING FUNCTIONS '''
 def basic_greedy_search(dist_matrix, num_cities):
@@ -371,38 +371,45 @@ def basic_greedy_search(dist_matrix, num_cities):
     # add the distance from the last city, to get back to the first
     c_tour_length += dist_matrix[c_tour[-1]][c_tour[0]]
     return c_tour_length
+
 def non_normalized_prob(dist_matrix,pheremone_matrix, i, j):
     epsilon = 0.0001
     heuristic_desire = 1/(dist_matrix[i][j]+epsilon)
     p = math.pow(pheremone_matrix[i][j],alpha)*math.pow(heuristic_desire,beta)
     return p
+
 def calculate_tour_length(c_tour):
     c_tour_length = 0
     for i in range(len(c_tour)-1):
         c_tour_length += dist_matrix[c_tour[i]][c_tour[i+1]]
     c_tour_length += dist_matrix[c_tour[-1]][c_tour[0]]
     return c_tour_length
-def adjust_pheremone_levels(pheremone_matrix, tours):
-    for i in range(num_cities):
-        for j in range(num_cities):
 
-            # evaporate the pheremone levels
-            pheremone_matrix[i][j] = (1-ro)*pheremone_matrix[i][j]
-            
-            # add the pheremone levels from the tours
-            for c_tour in tours:
-                # go through each edge in the tour and check if it is the edge i,j
-                
-                for k in range(len(c_tour)):
-                    if c_tour[k] == i and c_tour[(k+1)%len(c_tour)] == j:
-                        pheremone_matrix[i][j] += 1/calculate_tour_length(c_tour)
+def adjust_pheremone_levels(pheremone_matrix, tours):
+    # precompute tour lengths
+    tour_lengths = [calculate_tour_length(tour) for tour in tours]
+
+    # iterate through tours and edges only once
+    for tour_idx, tour in enumerate(tours):
+        for k in range(len(tour)):
+            i = tour[k]
+            j = tour[(k + 1) % len(tour)]
+
+            # Evaporate the pheromone levels
+            pheremone_matrix[i][j] *= (1 - ro)
+
+            # Add the pheromone levels from the tours
+            pheremone_matrix[i][j] += 1 / tour_lengths[tour_idx]
+
+
 
 Tau_0 = N/basic_greedy_search(dist_matrix, num_cities)
 
 '''START OF ACO ALGORITHM'''
 
-# make a pheremone matrix a deep copy of the distance matrix
-# might want to change this later
+
+'''Initialise pheremone matrix'''
+# perform a deep copy of the dist_matrix
 pheremone_matrix = copy.deepcopy(dist_matrix)
 
 # initialise all pheremone values to Tau_0
@@ -411,51 +418,46 @@ for i in range(num_cities):
     for j in range(num_cities):
         pheremone_matrix[i][j] = Tau_0
 
+
+'''Initialise positions of ants'''
 # for each of the n ants generate a number between 0 and the n-1 cities
 # do this for each ant and store the results in a list
 positions = []
 for i in range(N):
     positions.append(random.randint(0, num_cities-1))
 
+
+'''Start of the main loop'''
 time_up = False
 t = 0
 while t < max_it: # for each iteration
     tours = []
     for k in range(N): # for each ant
-        # add the start position as a foribidden city
-        forbidden = [positions[k]]
-        
-        
+
+      
         elapsed_time = time.time() - start_time
         if elapsed_time > end_time:
             time_up = True
             break
 
+        # initialise the set of forbidden cities
+        forbidden = [positions[k]]
 
-        # while we have not visited all cities
-        neighbours = [i for i in range(num_cities)]
+        # initialise the set of neighbours
+        neighbours = list(range(num_cities))
 
         while len(forbidden) != num_cities:
-
-
             neighbours = list(set(neighbours) - set(forbidden))
-            probabilities = []
 
-            # for each neighbour of the current city
-            for neighbour in neighbours:
-                # assuming the last added forbidden, was the last visisted
-                p = non_normalized_prob(dist_matrix,pheremone_matrix,forbidden[-1],neighbour)
-                probabilities.append(p)
-            
-            # normalize the probabilities by dividing each element by the sum of all elements
-            probabilities = [i/sum(probabilities) for i in probabilities]
+            # Calculate and normalize probabilities for each neighbour
+            probabilities = [non_normalized_prob(dist_matrix, pheremone_matrix, forbidden[-1], neighbour) for neighbour in neighbours]
+            #total_prob = sum(probabilities)
+            #probabilities = [i / total_prob for i in probabilities]
 
-            # choose a city by random from the probabilities
-            index = random.choices(range(len(probabilities)), weights=probabilities, k=1)[0]
-            forbidden.append(neighbours[index])
+            # Choose a city randomly based on the probabilities
+            next_city = random.choices(neighbours, weights=probabilities, k=1)[0]
+            forbidden.append(next_city)
 
-        
-        
         tours.append(forbidden)
 
 

@@ -15,8 +15,7 @@ import os
 import sys
 import time
 import random
-import copy
-import math
+
 ############ START OF SECTOR 1 (IGNORE THIS COMMENT)
 ############
 ############ NOW PLEASE SCROLL DOWN UNTIL THE NEXT BLOCK OF CAPITALIZED COMMENTS.
@@ -266,7 +265,7 @@ print("The codes and tariffs have been read from 'alg_codes_and_tariffs.txt':")
 ############
 ############ END OF SECTOR 5 (IGNORE THIS COMMENT)
 
-my_user_name = "jbtl68"
+my_user_name = "abcd12"
 
 ############ START OF SECTOR 6 (IGNORE THIS COMMENT)
 ############
@@ -279,8 +278,8 @@ my_user_name = "jbtl68"
 ############
 ############ END OF SECTOR 6 (IGNORE THIS COMMENT)
 
-my_first_name = "Joseph"
-my_last_name = "Dunne"
+my_first_name = ""
+my_last_name = ""
 
 ############ START OF SECTOR 7 (IGNORE THIS COMMENT)
 ############
@@ -290,7 +289,7 @@ my_last_name = "Dunne"
 ############
 ############ END OF SECTOR 7 (IGNORE THIS COMMENT)
 
-algorithm_code = "AC"
+algorithm_code = "XX"
 
 ############ START OF SECTOR 8 (IGNORE THIS COMMENT)
 ############
@@ -324,147 +323,6 @@ added_note = ""
 ############
 ############ NOW YOUR CODE SHOULD BEGIN.
 ############
-
-tour_length = -1
-# set a random seed
-random.seed(1234)
-
-def basic_greedy_search(dist_matrix, num_cities):
-    # let us start at city indx 0
-    c_tour = [0]
-    c_tour_length = 0
-    while(len(c_tour) != num_cities):
-
-        # the current city we consider is the last added tour
-        current_city = c_tour[-1]
-        # the fringe consists of all neighbours of the current city
-        fringe_distances = dist_matrix[current_city]
-
-        next_city = None
-        shortest_dist = 0
-
-        for city_indx, dist in enumerate(fringe_distances):
-            # only consider a city if we have not already visited it
-            if city_indx not in c_tour:
-                # if it is our first time looping, then make the next city the current. Otherwise, ensure it is the smallest
-                if next_city is None or dist < fringe_distances[next_city]:
-                    next_city = city_indx
-
-        # add the next chosen cities distance
-        # then append the next city to a list
-        c_tour_length += fringe_distances[next_city]
-        c_tour.append(next_city)
-
-    # add the distance from the last city, to get back to the first
-    c_tour_length += dist_matrix[c_tour[-1]][c_tour[0]]
-    return c_tour_length
-
-
-# ACO parameters
-max_it = 10
-N = 50
-# calculate the initial pheremone level
-Tau_0 = N/basic_greedy_search(dist_matrix, num_cities)
-ro = 0.5
-alpha = 1
-beta = 1
-tour_length = -1
-
-# make a pheremone matrix a deep copy of the distance matrix
-# might want to change this later
-pheremone_matrix = copy.deepcopy(dist_matrix)
-
-# initialise all pheremone values to Tau_0
-# 2 ways of indexing pheremone levels
-for i in range(num_cities):
-    for j in range(num_cities):
-        pheremone_matrix[i][j] = Tau_0
-
-# for each of the n ants generate a number between 0 and the n-1 cities
-# do this for each ant and store the results in a list
-positions = []
-for i in range(N):
-    positions.append(random.randint(0, num_cities-1))
-
-
-
-def non_nomralized_prob(dist_matrix,pheremone_matrix, i, j):
-    epsilon = 0.0001
-    heuristic_desire = 1/(dist_matrix[i][j]+epsilon)
-    p = math.pow(pheremone_matrix[i][j],alpha)*math.pow(heuristic_desire,beta)
-    return p
-
-def calculate_tour_length(c_tour):
-    c_tour_length = 0
-    for i in range(len(c_tour)-1):
-        c_tour_length += dist_matrix[c_tour[i]][c_tour[i+1]]
-    c_tour_length += dist_matrix[c_tour[-1]][c_tour[0]]
-    return c_tour_length
-
-
-def adjust_pheremone_levels(pheremone_matrix, tours):
-    for i in range(num_cities):
-        for j in range(num_cities):
-
-            # evaporate the pheremone levels
-            pheremone_matrix[i][j] = (1-ro)*pheremone_matrix[i][j]
-            
-            # add the pheremone levels from the tours
-            for c_tour in tours:
-                # go through each edge in the tour and check if it is the edge i,j
-                
-                for k in range(len(c_tour)):
-                    if c_tour[k] == i and c_tour[(k+1)%len(c_tour)] == j:
-                        pheremone_matrix[i][j] += 1/calculate_tour_length(c_tour)
-    
-
-
-
-t = 0
-
-
-while t < max_it:
-    tours = []
-    for k in range(N):
-        # add the start position as a foribidden city
-        forbidden = [positions[k]]
-
-        # while we have not visited all cities
-        while len(forbidden) != num_cities:
-
-            neighbours = [i for i in range(num_cities) if i not in forbidden]
-            probabilities = []
-
-            # for each neighbour of the current city
-            for neighbour in neighbours:
-                # assuming the last added forbidden, was the last visisted
-                p = non_nomralized_prob(dist_matrix,pheremone_matrix,forbidden[-1],neighbour)
-                probabilities.append(p)
-            
-            # normalize the probabilities by dividing each element by the sum of all elements
-            probabilities = [i/sum(probabilities) for i in probabilities]
-
-            # choose a city by random from the probabilities
-            index = random.choices(range(len(probabilities)), weights=probabilities, k=1)[0]
-            forbidden.append(neighbours[index])
-        
-        tours.append(forbidden)
-
-        # deposit and evappourate pheremone
-        adjust_pheremone_levels(pheremone_matrix, tours)
-
-
-    # evaluate the best tour    
-    for c_tour in tours:
-        c_tour_length = calculate_tour_length(c_tour)
-        
-        if c_tour_length < tour_length or tour_length == -1:
-            tour_length = c_tour_length
-            tour = c_tour
-    
-    
-    t += 1     
-
 
 
 
