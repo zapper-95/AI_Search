@@ -327,7 +327,7 @@ added_note = ""
 # set a timer
 start_time = time.time()
 random.seed(1)
-end_time = 57
+end_time = 20
 
 '''GA Parameters'''
 #pop_size = num_cities * 10
@@ -342,14 +342,19 @@ def adapt_mutation_rate(population, fitness_values, num_cities,mutation_rate):
     std_dev = statistics.stdev(fitness_values)
     # find out how many standard deviations the worst fitness is from the mean
     # using standard library function
+
+    # if the standard deviation is 0, then majorily increase the mutation rate
+    if std_dev == 0:
+        return 0.2
     z_score = (min(fitness_values) - statistics.mean(fitness_values)) / std_dev
+
 
     #print("z_score: ", z_score)
     #print("mutation_rate: ", mutation_rate)
-    if(z_score < -2):
+    if(z_score < -3):
         mutation_rate -= 0.01
         mutation_rate = max(mutation_rate, 0)
-    elif(z_score > -1):
+    elif(z_score > -0.5):
         mutation_rate += 0.01
         mutation_rate = min(mutation_rate, 0.5)
     else :
@@ -399,6 +404,12 @@ def fitness(tour):
 
 
 def order_crossover_operator(parent1, parent2):
+    # check if the value is less than the crossover rate
+    if random.random() > crossover_rate:
+        # randomly return one of the parents
+        return parent1, parent2
+
+
     # choose two cut off points at random with the second being greater than the first
     cut_off1 = random.randint(0, num_cities-2)
     cut_off2 = random.randint(cut_off1+1, num_cities-1)
@@ -520,10 +531,10 @@ for i in range(max_iter):
         
      
         '''Crossover'''
-        #child1= cx(parents[0], parents[1])
-        #child2 = cx(parents[1],parents[0])
+        child1= cx(parents[0], parents[1])
+        child2 = cx(parents[1],parents[0])
 
-        child1,child2 = order_crossover_operator(parents[0], parents[1])
+        #child1,child2 = order_crossover_operator(parents[0], parents[1])
 
 
         '''Mutation'''
