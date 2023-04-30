@@ -327,13 +327,13 @@ added_note = ""
 # set a timer
 start_time = time.time()
 random.seed(1)
-end_time = 5
+end_time = 57
 
 '''GA Parameters'''
-pop_size = 100
+pop_size = num_cities * 10
 max_iter = 10000
 mutation_rate = 0.01
-crossover_rate = 0.8
+crossover_rate = 0.6
 
  
 
@@ -367,7 +367,42 @@ def fitness(tour):
     total = 0
     for i in range(num_cities):
         total += dist_matrix[tour[i]][tour[(i+1)%num_cities]]
-    return (1/(total+delta))**5
+    return (1/(total+delta))
+
+
+def order_crossover_operator(parent1, parent2):
+    # choose two cut off points at random with the second being greater than the first
+    cut_off1 = random.randint(0, num_cities-2)
+    cut_off2 = random.randint(cut_off1+1, num_cities-1)
+
+    child1 =  [-1 for i in range(num_cities)]
+    child2 =  [-1 for i in range(num_cities)]
+
+    # copy the middle section of the parents into the children
+    for i in range(cut_off1, cut_off2+1):
+        child1[i] = parent1[i]
+        child2[i] = parent2[i]
+
+    # fill in the rest of the child with the cities from the other parent
+    
+    remaining_1 = [city for city in parent2 if city not in child1]
+    remaining_2 = [city for city in parent1 if city not in child2]
+
+    for i in range(cut_off2+1, num_cities):
+        child1[i] = remaining_1.pop(0)
+        child2[i] = remaining_2.pop(0)
+
+    for i in range(0, cut_off1):
+        child1[i] = remaining_1.pop(0)
+        child2[i] = remaining_2.pop(0)
+    return child1, child2
+        
+
+
+
+
+
+
 
 def cx(parent1, parent2):
     # generate a random number between 0 and 1
@@ -413,6 +448,11 @@ def tornament_selection(population, fitness_values):
         return population[parent1]
     return population[parent2]
 
+def proportional_roulette_wheel(population,fitness_values):
+    parents = random.choices(population, weights=fitness_values, k=2)
+    return parents[0], parents[1]
+
+
 
 
 
@@ -445,12 +485,15 @@ for i in range(max_iter):
         # select two parents with tournament selection
         # select 5 random tours and choose the best two
         parents = tornament_selection(population, fitness_values), tornament_selection(population, fitness_values)
+        #parents = proportional_roulette_wheel(population, fitness_values)
         
-
      
         '''Crossover'''
-        child1= cx(parents[0], parents[1])
-        child2 = cx(parents[1],parents[0])
+        #child1= cx(parents[0], parents[1])
+        #child2 = cx(parents[1],parents[0])
+
+        child1,child2 = order_crossover_operator(parents[0], parents[1])
+
 
         '''Mutation'''
         mutation(child1, child2)

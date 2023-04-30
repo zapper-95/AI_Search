@@ -1,0 +1,5 @@
+USER = jbtl68 (Joseph Dunne),
+ALGORITHM CODE = GA, NAME OF CITY-FILE = AISearchfile017.txt,
+SIZE = 17, TOUR LENGTH = 1729,
+15,8,13,11,10,2,0,4,3,16,9,14,1,5,7,12,6,
+NOTE = 

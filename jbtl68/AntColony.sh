@@ -1,0 +1,10 @@
+python AntColonyOptimization.py AISearchfile012.txt
+python AntColonyOptimization.py AISearchfile017.txt
+python AntColonyOptimization.py AISearchfile021.txt
+python AntColonyOptimization.py AISearchfile026.txt
+python AntColonyOptimization.py AISearchfile042.txt
+python AntColonyOptimization.py AISearchfile048.txt
+python AntColonyOptimization.py AISearchfile058.txt
+python AntColonyOptimization.py AISearchfile175.txt
+python AntColonyOptimization.py AISearchfile180.txt
+python AntColonyOptimization.py AISearchfile535.txt
