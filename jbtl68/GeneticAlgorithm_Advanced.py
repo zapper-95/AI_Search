@@ -326,7 +326,8 @@ added_note = ""
 
 # set a timer
 start_time = time.time()
-end_time = 5
+random.seed(1)
+end_time = 57
 
 '''GA Parameters'''
 pop_size = 1000
@@ -346,42 +347,109 @@ def fitness(tour):
 
 def cx(parent1, parent2):
 
-        child = [-1 for i in range(num_cities)] 
+    # create child1
+    child = [-1 for i in range(num_cities)]
+    
+    indx = 0
+    while(parent1[indx] not in child):
+        child[indx] = parent1[indx]
+        indx = parent1.index(parent2[indx])
+    
+    for i in range(num_cities):
+        if(child[i] == -1):
+            child[i] = parent2[i]
+    
+    return child
 
-        '''First we randomly select a bit from the first parent, let's say bit 1, and place it at the same position in the offspring.'''
 
-        '''Now every bit in the offspring should be taken from one of its parents with the same position, it means that further we do not have any choice, so the next bit to be considered must be bit 8, as the bit from the second parent is just below the selected bit 1. In first parent this bit is at 8th position; thus'''
-        next_bit_indx = 0
-        for i in range(num_cities):
-            # if the city is not in the child, then the cycle has not ended
-            if parent1[next_bit_indx] not in child:
-                child[i] = parent1[next_bit_indx]
-                # next bit indx is where the value of the current index,
-                # for parent 2, is for the first parent
-                next_bit_indx = parent1.index(parent2[next_bit_indx])
-            else:
-                break
+
+
+
+def find_cycle(edges):
+    # iterate through each edge, and keep track of the cities that have been visited
+    # when one is visited twice, then the cycle is complete
+    
+    # have dict called vivsted, with key = city, value = number of times visited
+    visited = []
+    visited.append(edges[0][0])
+    for i,edge in enumerate(edges):
+        if edge[1] not in visited:
+            visited.append(edges[i][1])
+        else:
+            return edges[:i+1]
+    return None  
+
+def EAX(parent1, parent2):
+    # Apply EAX crossover to two parents
+
+    # convert each parent to a list of tuples indicating the edges
+    E_a = [(parent1[i], parent1[(i+1)%num_cities]) for i in range(num_cities)]
+    # add to E_a the edges but in the opposite direction
+    
+    E_b = [(parent2[i], parent2[(i+1)%num_cities]) for i in range(num_cities)]
+
+    '''STEP 1'''
+    # create a list of edges that is the union of the two parents
+    G_AB = list(E_a + E_b)
+
+
+    '''STEP 2'''
+    # randomly select a vertex (in range 0 to num_cities-1)
+    v = random.randint(0, num_cities-1)
+    # create a cycle starting at v_start, which alternates between edges in E_a and edges in E_b
+    cycles = []
+    trace=  []
+    i = 0
+    while len(G_AB) > 0:
+        if i % 2 ==0:
+            # add an edge from E_a
+            # do this by finding an edge in E_a that starts at v
+            for edge in set(E_a).intersection(G_AB):
+                if edge[0] == v:
+                    G_AB.remove(edge)
+                    trace.append(edge)
+                    break
+        else:
+            # add an edge from E_b
+            # do this by finding an edge in E_b that starts at v
+            for edge in set(E_b).intersection(G_AB):
+                if edge[0] == v:
+                    G_AB.remove(edge)
+                    trace.append(edge)
+                    break
         
-        # fill remaining -1's with cities from parent2 in the same position
-        for i in range(num_cities):
-            if child[i] == -1:
-                child[i] = parent2[i]
+        i += 1
 
-        # check if the child is valid
-        if len(set(child)) != num_cities:
-            print("invalid child")
-            print("parent1: ", parent1)
-            print("parent2: ", parent2)
-            print("child: ", child)
-            print("set: ", len(set(child)))
-            print("num_cities: ", num_cities)
-            sys.exit()
-        return child
+        print("trace: ", trace)
+        cycle = find_cycle(trace)
+        
+        if(cycle != None):
+            cycles.append(cycle)
+
+            trace = list(set(trace)-set(cycle))
+            # check if the trace is empty
+            if len(trace) == 0:
+                v = random.choice(list(set([edge[0] for edge in G_AB])))
+            else:
+                v = trace[-1][1]
+        else:
+            v = trace[-1][1]
+
             
 
-def cx2(parent1, parent2):
 
-    return
+        
+
+
+        
+
+
+
+
+
+
+
+    # create an AB-cycles
 
 def mutation(child1, child2):
     if random.random() < mutation_rate:
@@ -415,13 +483,13 @@ for i in range(max_iter):
         # select two parents with probability proportional to fitness
         parents = random.choices(population, weights=fitness_values, k=2)
 
-
+        #EAX(parents[0], parents[1])
 
 
      
         '''Crossover'''
         child1= cx(parents[0], parents[1])
-        child2 = cx(parents[0],parents[1])
+        child2 = cx(parents[1],parents[0])
 
         '''Mutation'''
         #mutation(child1, child2)
