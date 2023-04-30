@@ -15,7 +15,7 @@ import os
 import sys
 import time
 import random
-
+import statistics
 ############ START OF SECTOR 1 (IGNORE THIS COMMENT)
 ############
 ############ NOW PLEASE SCROLL DOWN UNTIL THE NEXT BLOCK OF CAPITALIZED COMMENTS.
@@ -330,12 +330,40 @@ random.seed(1)
 end_time = 57
 
 '''GA Parameters'''
-pop_size = num_cities * 10
+#pop_size = num_cities * 10
+pop_size = 100
 max_iter = 10000
 mutation_rate = 0.01
 crossover_rate = 0.6
 
- 
+def adapt_mutation_rate(population, fitness_values, num_cities,mutation_rate):
+    # calculate the standard deviation of the fitness values
+    # using standard library function
+    std_dev = statistics.stdev(fitness_values)
+    # find out how many standard deviations the worst fitness is from the mean
+    # using standard library function
+    z_score = (min(fitness_values) - statistics.mean(fitness_values)) / std_dev
+
+    #print("z_score: ", z_score)
+    #print("mutation_rate: ", mutation_rate)
+    if(z_score < -2):
+        mutation_rate -= 0.01
+        mutation_rate = max(mutation_rate, 0)
+    elif(z_score > -1):
+        mutation_rate += 0.01
+        mutation_rate = min(mutation_rate, 0.5)
+    else :
+        mutation_rate = mutation_rate
+
+    return mutation_rate
+
+
+
+
+    
+    
+
+    
 
 def basic_greedy_tour(dist_matrix, num_cities):
     # let us start at city indx 0
@@ -466,6 +494,9 @@ for i in range(max_iter):
     new_population = []
     # produce fitness values for each tour using list comp
     fitness_values = [fitness(tour) for tour in population]
+
+    mutation_rate = adapt_mutation_rate(population, fitness_values,num_cities,mutation_rate)
+
     
     # always keep the best tour
     new_population.append(population[fitness_values.index(max(fitness_values))])
@@ -505,7 +536,6 @@ for i in range(max_iter):
         break
 
     population = new_population
-
 
 # use list comp to get the tour with the least distance
 # do not use the fitness function

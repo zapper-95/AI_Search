@@ -15,8 +15,7 @@ import os
 import sys
 import time
 import random
-import copy
-import math
+
 ############ START OF SECTOR 1 (IGNORE THIS COMMENT)
 ############
 ############ NOW PLEASE SCROLL DOWN UNTIL THE NEXT BLOCK OF CAPITALIZED COMMENTS.
@@ -290,7 +289,7 @@ my_last_name = "Dunne"
 ############
 ############ END OF SECTOR 7 (IGNORE THIS COMMENT)
 
-algorithm_code = "AC"
+algorithm_code = "GA"
 
 ############ START OF SECTOR 8 (IGNORE THIS COMMENT)
 ############
@@ -325,136 +324,110 @@ added_note = ""
 ############ NOW YOUR CODE SHOULD BEGIN.
 ############
 
-# start timer
+import random
+import time
+
+# GA Parameters
+pop_size = num_cities * 10
+max_iter = 10000
+mutation_rate = 0.01
+crossover_rate = 0.6
+end_time = 5  # Add an end time to stop the search
 start_time = time.time()
-# stop execution of the code after 57 seconds
-end_time = 5
-
-tour_length = -1
-random.seed(1234)
-
-'''ACO PARAMETERS'''
-max_it = 100000
-N = num_cities
-ro = 0.5
-alpha = 1
-beta = 10
 
 
-''' DECLARING FUNCTIONS '''
-def basic_greedy_search(dist_matrix, num_cities):
-    # let us start at city indx 0
-    c_tour = [0]
-    c_tour_length = 0
-    while(len(c_tour) != num_cities):
-
-        # the current city we consider is the last added tour
-        current_city = c_tour[-1]
-        # the fringe consists of all neighbours of the current city
+def basic_greedy_tour(dist_matrix, num_cities):
+    temp_tour = [0]
+    while len(temp_tour) != num_cities:
+        current_city = temp_tour[-1]
         fringe_distances = dist_matrix[current_city]
-
-        next_city = None
-
-        for city_indx, dist in enumerate(fringe_distances):
-            # only consider a city if we have not already visited it
-            if city_indx not in c_tour:
-                # if it is our first time looping, then make the next city the current. Otherwise, ensure it is the smallest
-                if next_city is None or dist < fringe_distances[next_city]:
-                    next_city = city_indx
-
-        # add the next chosen cities distance
-        # then append the next city to a list
-        c_tour_length += fringe_distances[next_city]
-        c_tour.append(next_city)
-
-    # add the distance from the last city, to get back to the first
-    c_tour_length += dist_matrix[c_tour[-1]][c_tour[0]]
-    return c_tour_length
+        next_city = min(((city_indx, dist) for city_indx, dist in enumerate(fringe_distances) if city_indx not in temp_tour), key=lambda x: x[1])[0]
+        temp_tour.append(next_city)
+    return temp_tour
 
 
+def fitness(tour):
+    delta = 0.000001
+    total = sum(dist_matrix[tour[i]][tour[(i + 1) % num_cities]] for i in range(num_cities))
+    return 1 / (total + delta)
 
 
-Tau_0 = 1.2*N/basic_greedy_search(dist_matrix, num_cities)
+def order_crossover_operator(parent1, parent2):
+    cut_off1, cut_off2 = sorted(random.sample(range(1, num_cities - 1), 2))
+    child1, child2 = parent1[cut_off1:cut_off2], parent2[cut_off1:cut_off2]
 
-# place the ants at random cities
-ants_pos = [random.randint(0, num_cities-1) for i in range(N)]
+    remaining_1, remaining_2 = [city for city in parent2 if city not in child1], [city for city in parent1 if city not in child2]
 
-# initialise the pheremone matrix
-pheremone_matrix = [[Tau_0 for i in range(num_cities)] for j in range(num_cities)]
+    return remaining_1[-cut_off1:] + child1 + remaining_1[:-cut_off1], remaining_2[-cut_off1:] + child2 + remaining_2[:-cut_off1]
 
-'''START OF ACO ALGORITHM'''
+
+def cx(parent1, parent2):
+    rand = random.random()
+    if rand > crossover_rate:
+        return random.choice((parent1, parent2))
+
+    child = [-1] * num_cities
+    indx = 0
+    while parent1[indx] not in child:
+        child[indx] = parent1[indx]
+        indx = parent1.index(parent2[indx])
+
+    child = [parent2[i] if city == -1 else city for i, city in enumerate(child)]
+    return child
+
+
+def mutation(child1, child2):
+    for child in (child1, child2):
+        if random.random() < mutation_rate:
+            swap_index1, swap_index2 = random.sample(range(num_cities), 2)
+            child[swap_index1], child[swap_index2] = child[swap_index2], child[swap_index1]
+
+
+def proportional_roulette_wheel(population, fitness_values):
+    return random.choices(population, weights=fitness_values, k=2)
+
+
+# Main loop
+population = [random.sample(range(num_cities), num_cities) for _ in range(pop_size)]
 time_out = False
-for t in range(max_it):
-    tours = []
-    tour_lengths = []
-    for k in range(N):
-        
-        # check timer
+
+for i in range(max_iter):
+    new_population = []
+    fitness_values = [fitness(tour) for tour in population]
+    
+    new_population.append(max(zip(population, fitness_values), key=lambda x: x[1])[0])
+
+    while len(new_population) < pop_size:
         if time.time() - start_time > end_time:
             time_out = True
             break
 
+        parents = proportional_roulette_wheel(population, fitness_values)
+        child1, child2 = order_crossover_operator(*parents)
 
-        current_city = ants_pos[k]
-        forbidden_cities = [current_city]
-        neighbours = list(range(num_cities))
+        mutation(child1, child2)
+        new_population.extend((child1, child2))
 
-        length = 0
-        while len(forbidden_cities) != num_cities:
-            neighbours = list(set(neighbours) - set(forbidden_cities))
-
-            #produce a heuristic list that is the inverse of the distance to each neighbour
-            epsilon = 0.000001
-            heuristic = [1/(dist_matrix[current_city][i]+epsilon) for i in neighbours]
-            
-            probabilities = [pheremone_matrix[current_city][city]**alpha * heuristic[i]**beta for i,city in enumerate(neighbours)]
-
-            # pick a city stochastically
-            current_city = random.choices(neighbours, probabilities)[0]
-
-            # increment the length of the tour
-            length += dist_matrix[forbidden_cities[-1]][current_city]
-
-            # add the city to the forbidden list
-            forbidden_cities.append(current_city)
-        
-        last_length = dist_matrix[forbidden_cities[-1]][forbidden_cities[0]]
-        tour_lengths.append(length+last_length)
-        tours.append(forbidden_cities)
-
-    
-    
-    # get the index of the smallest tour
-    best_tour_indx = tour_lengths.index(min(tour_lengths))
-
-    if (tour_length == -1 or tour_lengths[best_tour_indx] < tour_length):
-        tour_length = tour_lengths[best_tour_indx]
-        tour = tours[best_tour_indx]
-
-
-    if(time_out):
+    if time_out:
         break
 
-    # update pheremone matrix
-    for tour_idx, temp_tour in enumerate(tours):
-        for k in range(num_cities):
-            i = temp_tour[k]
-            j = temp_tour[(k + 1) % len(temp_tour)]
+    population = new_population
 
-            # Evaporate the pheromone levels
-            pheremone_matrix[i][j] *= (1 - ro)
+# Calculate the tour with the least distance
+distances = [sum(dist_matrix[tour[i]][tour[(i + 1) % num_cities]] for i in range(num_cities)) for tour in population]
+min_index = distances.index(min(distances))
+tour = population[min_index]
+tour_length = distances[min_index]
 
-            # Add the pheromone levels from the tours
-            pheremone_matrix[i][j] += 1 / tour_lengths[tour_idx]
+# Print the results
+print(f"Best tour: {tour}")
+print(f"Tour length: {tour_length}")
 
-    t += 1
-    
-            
+   
 
 
 
-
-
+        
 
 
 
