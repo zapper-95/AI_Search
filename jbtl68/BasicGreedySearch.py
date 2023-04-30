@@ -336,7 +336,6 @@ while(len(tour) != num_cities):
     fringe_distances = dist_matrix[current_city]
 
     next_city = None
-    shortest_dist = 0
 
     for city_indx, dist in enumerate(fringe_distances):
         # only consider a city if we have not already visited it

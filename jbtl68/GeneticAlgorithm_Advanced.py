@@ -327,15 +327,39 @@ added_note = ""
 # set a timer
 start_time = time.time()
 random.seed(1)
-end_time = 57
+end_time = 5
 
 '''GA Parameters'''
-pop_size = 1000
-max_iter = 1000
+pop_size = 100
+max_iter = 10000
 mutation_rate = 0.01
+crossover_rate = 0.8
 
-# Randomly Generate intial population
-population = [random.sample(range(num_cities), num_cities) for i in range(pop_size)]
+ 
+
+def basic_greedy_tour(dist_matrix, num_cities):
+    # let us start at city indx 0
+    temp_tour = [0]
+    while(len(temp_tour) != num_cities):
+
+        # the current city we consider is the last added tour
+        current_city = temp_tour[-1]
+        # the fringe consists of all neighbours of the current city
+        fringe_distances = dist_matrix[current_city]
+
+        next_city = None
+
+        for city_indx, dist in enumerate(fringe_distances):
+            # only consider a city if we have not already visited it
+            if city_indx not in temp_tour:
+                # if it is our first time looping, then make the next city the current. Otherwise, ensure it is the smallest
+                if next_city is None or dist < fringe_distances[next_city]:
+                    next_city = city_indx
+        # then append the next city to a list
+        temp_tour.append(next_city)
+
+    return temp_tour
+
 
 def fitness(tour):
     '''Calculates the fitness of a tour'''
@@ -343,11 +367,17 @@ def fitness(tour):
     total = 0
     for i in range(num_cities):
         total += dist_matrix[tour[i]][tour[(i+1)%num_cities]]
-    return 1/(total+delta)
+    return (1/(total+delta))**5
 
 def cx(parent1, parent2):
+    # generate a random number between 0 and 1
+    rand = random.random()
+    if(rand > crossover_rate):
+        # return either parent1 or parent2 at random
+        if(random.random() > 0.5):
+            return parent2
+        return parent1
 
-    # create child1
     child = [-1 for i in range(num_cities)]
     
     indx = 0
@@ -361,117 +391,46 @@ def cx(parent1, parent2):
     
     return child
 
-
-
-
-
-def find_cycle(edges):
-    # iterate through each edge, and keep track of the cities that have been visited
-    # when one is visited twice, then the cycle is complete
-    
-    # have dict called vivsted, with key = city, value = number of times visited
-    visited = []
-    visited.append(edges[0][0])
-    for i,edge in enumerate(edges):
-        if edge[1] not in visited:
-            visited.append(edges[i][1])
-        else:
-            return edges[:i+1]
-    return None  
-
-def EAX(parent1, parent2):
-    # Apply EAX crossover to two parents
-
-    # convert each parent to a list of tuples indicating the edges
-    E_a = [(parent1[i], parent1[(i+1)%num_cities]) for i in range(num_cities)]
-    # add to E_a the edges but in the opposite direction
-    
-    E_b = [(parent2[i], parent2[(i+1)%num_cities]) for i in range(num_cities)]
-
-    '''STEP 1'''
-    # create a list of edges that is the union of the two parents
-    G_AB = list(E_a + E_b)
-
-
-    '''STEP 2'''
-    # randomly select a vertex (in range 0 to num_cities-1)
-    v = random.randint(0, num_cities-1)
-    # create a cycle starting at v_start, which alternates between edges in E_a and edges in E_b
-    cycles = []
-    trace=  []
-    i = 0
-    while len(G_AB) > 0:
-        if i % 2 ==0:
-            # add an edge from E_a
-            # do this by finding an edge in E_a that starts at v
-            for edge in set(E_a).intersection(G_AB):
-                if edge[0] == v:
-                    G_AB.remove(edge)
-                    trace.append(edge)
-                    break
-        else:
-            # add an edge from E_b
-            # do this by finding an edge in E_b that starts at v
-            for edge in set(E_b).intersection(G_AB):
-                if edge[0] == v:
-                    G_AB.remove(edge)
-                    trace.append(edge)
-                    break
-        
-        i += 1
-
-        print("trace: ", trace)
-        cycle = find_cycle(trace)
-        
-        if(cycle != None):
-            cycles.append(cycle)
-
-            trace = list(set(trace)-set(cycle))
-            # check if the trace is empty
-            if len(trace) == 0:
-                v = random.choice(list(set([edge[0] for edge in G_AB])))
-            else:
-                v = trace[-1][1]
-        else:
-            v = trace[-1][1]
-
-            
-
-
-        
-
-
-        
-
-
-
-
-
-
-
-    # create an AB-cycles
-
 def mutation(child1, child2):
-    if random.random() < mutation_rate:
-        # swap two cities in child1
-        # pick two random numbers without replacement
+    mutate1, mutate2 = random.random(), random.random()
+
+    if mutate1 < mutation_rate:
         swap_index1, swap_index2 = random.sample(range(num_cities), 2)
         child1[swap_index1], child1[swap_index2] = child1[swap_index2], child1[swap_index1]
     
-    if random.random() < mutation_rate:
-        # swap two cities in child2
-        # pick two random numbers without replacement
+    if mutate2 < mutation_rate:
         swap_index1, swap_index2 = random.sample(range(num_cities), 2)
         child2[swap_index1], child2[swap_index2] = child2[swap_index2], child2[swap_index1]
 
 
+
+
+def tornament_selection(population, fitness_values):
+    # randomly select two parents
+    parent1, parent2 = random.sample(range(pop_size), 2)
+    # return the parent with the highest fitness
+    if fitness_values[parent1] > fitness_values[parent2]:
+        return population[parent1]
+    return population[parent2]
+
+
+
+
+'''MAIN LOOP'''
+# Randomly Generate intial population
+# add a basic greedy tour to the population
+population = [random.sample(range(num_cities), num_cities) for i in range(pop_size)]
+#population.append(basic_greedy_tour(dist_matrix, num_cities))
 time_out = False
 for i in range(max_iter):
     new_population = []
     # produce fitness values for each tour using list comp
     fitness_values = [fitness(tour) for tour in population]
-
-    for j in range(pop_size):
+    
+    # always keep the best tour
+    new_population.append(population[fitness_values.index(max(fitness_values))])
+    #print("Iteration: ", i, "Fitness: ", max(fitness_values))
+    for j in range(pop_size-1):
         
         # check timer
         if time.time() - start_time > end_time:
@@ -481,10 +440,12 @@ for i in range(max_iter):
         
         '''Selection'''
         # select two parents with probability proportional to fitness
-        parents = random.choices(population, weights=fitness_values, k=2)
+        #parents = random.choices(population, weights=fitness_values, k=2)
 
-        #EAX(parents[0], parents[1])
-
+        # select two parents with tournament selection
+        # select 5 random tours and choose the best two
+        parents = tornament_selection(population, fitness_values), tornament_selection(population, fitness_values)
+        
 
      
         '''Crossover'''
@@ -492,7 +453,7 @@ for i in range(max_iter):
         child2 = cx(parents[1],parents[0])
 
         '''Mutation'''
-        #mutation(child1, child2)
+        mutation(child1, child2)
  
         new_population.append(child1)
         new_population.append(child2)
@@ -501,6 +462,7 @@ for i in range(max_iter):
         break
 
     population = new_population
+
 
 # use list comp to get the tour with the least distance
 # do not use the fitness function
