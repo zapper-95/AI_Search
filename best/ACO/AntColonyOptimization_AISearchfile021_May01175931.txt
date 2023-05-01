@@ -1,0 +1,5 @@
+USER = jbtl68 (Joseph Dunne),
+ALGORITHM CODE = AC, NAME OF CITY-FILE = AISearchfile021.txt,
+SIZE = 21, TOUR LENGTH = 2611,
+0,2,8,6,10,18,17,1,20,7,3,12,4,19,11,15,14,9,16,5,13,
+NOTE = 
